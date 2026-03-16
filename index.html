@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🤖 Ultimate AI Editor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    #uploadZone {
+      border: 3px dashed #667eea;
+      padding: 40px;
+      margin: 20px 0;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 8px;
+      background: #f8f9ff;
+      transition: all 0.3s ease;
+    }
+
+    #uploadZone:hover {
+      background: #eef0ff;
+      border-color: #764ba2;
+    }
+
+    #uploadZone.dragover {
+      background: #e0e7ff;
+      border-color: #764ba2;
+      box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+    }
+
+    #uploadZone p {
+      margin: 0;
+      color: #667eea;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .file-name {
+      margin-top: 10px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #resultImg {
+      max-width: 100%;
+      max-height: 600px;
+      margin-top: 30px;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    #resultImg.show {
+      display: block;
+    }
+
+    .loader {
+      display: none;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .loader.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      display: none;
+    }
+
+    .error.show {
+      display: block;
+    }
+
+    .success {
+      background: #efe;
+      color: #3c3;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      display: none;
+    }
+
+    .success.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>🤖 Ultimate AI Editor</header>
+    
+    <div class="content">
+      <div id="uploadZone">
+        <p>📁 Click or Drag & Drop Image Here</p>
+        <div class="file-name" id="fileName"></div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+
+      <div class="controls">
+        <button class="btn-primary" id="faceSwapBtn">🔄 Face Swap</button>
+        <button class="btn-primary" id="text2imgBtn">🎨 Text to Image</button>
+      </div>
+
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p>Processing... This may take a moment</p>
+      </div>
+
+      <div class="error" id="errorMsg"></div>
+      <div class="success" id="successMsg"></div>
+
+      <img id="resultImg" alt="Result">
+    </div>
+  </div>
+
+  <script>
+    // DOM Elements
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const resultImg = document.getElementById('resultImg');
+    const faceSwapBtn = document.getElementById('faceSwapBtn');
+    const text2imgBtn = document.getElementById('text2imgBtn');
+    const loader = document.getElementById('loader');
+    const errorMsg = document.getElementById('errorMsg');
+    const successMsg = document.getElementById('successMsg');
+    const fileName = document.getElementById('fileName');
+
+    let selectedFile = null;
+
+    // Upload Zone Click
+    uploadZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    // File Input Change
+    fileInput.addEventListener('change', (e) => {
+      selectedFile = e.target.files[0];
+      if (selectedFile) {
+        fileName.textContent = `✓ Selected: ${selectedFile.name}`;
+      }
+    });
+
+    // Drag Over
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadZone.classList.add('dragover');
+    });
+
+    // Drag Leave
+    uploadZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadZone.classList.remove('dragover');
+    });
+
+    // Drop
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      uploadZone.classList.remove('dragover');
+      selectedFile = e.dataTransfer.files[0];
+      if (selectedFile) {
+        fileName.textContent = `✓ Selected: ${selectedFile.name}`;
+      }
+    });
+
+    // Show Error
+    function showError(message) {
+      errorMsg.textContent = `❌ ${message}`;
+      errorMsg.classList.add('show');
+      setTimeout(() => errorMsg.classList.remove('show'), 5000);
+    }
+
+    // Show Success
+    function showSuccess(message) {
+      successMsg.textContent = `✓ ${message}`;
+      successMsg.classList.add('show');
+      setTimeout(() => successMsg.classList.remove('show'), 5000);
+    }
+
+    // Show Loader
+    function setLoading(isLoading) {
+      if (isLoading) {
+        loader.classList.add('active');
+      } else {
+        loader.classList.remove('active');
+      }
+    }
+
+    // Face Swap Handler
+    faceSwapBtn.addEventListener('click', async () => {
+      if (!selectedFile) {
+        showError('Please upload an image first');
+        return;
+      }
+
+      const secondImageUrl = prompt('Enter second image URL for face swap:');
+      if (!secondImageUrl) return;
+
+      setLoading(true);
+      try {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const base64 = reader.result.split(',')[1];
+            const response = await fetch('http://localhost:3000/api/hf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'lucataco/faceswap',
+                inputs: {
+                  image1: base64,
+                  image2: secondImageUrl
+                }
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error(`API Error: ${response.statusText}`);
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            resultImg.src = url;
+            resultImg.classList.add('show');
+            showSuccess('Face swap completed!');
+          } catch (err) {
+            showError(err.message);
+          } finally {
+            setLoading(false);
+          }
+        };
+        reader.readAsDataURL(selectedFile);
+      } catch (err) {
+        showError(err.message);
+        setLoading(false);
+      }
+    });
+
+    // Text to Image Handler
+    text2imgBtn.addEventListener('click', async () => {
+      const promptText = prompt('Describe the image you want to generate:');
+      if (!promptText) return;
+
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:3000/api/openai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: promptText })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.data && data.data[0] && data.data[0].url) {
+          resultImg.src = data.data[0].url;
+          resultImg.classList.add('show');
+          showSuccess('Image generated successfully!');
+        } else {
+          throw new Error('Invalid response from API');
+        }
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>
